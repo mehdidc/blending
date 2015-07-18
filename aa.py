@@ -7,19 +7,27 @@ from lasagne.layers.helper import get_all_layers
 import theano.tensor as T
 from theano.sandbox import rng_mrg
 from lasagne.generative.capsule import Capsule
+import theano
 
+def corrupted_masking_noise(rng, x, corruption_level):
+    return rng.binomial(size=x.shape, n=1, p=1 - corruption_level) * x
+
+def corrupted_salt_and_pepper(rng, x, corruption_level):
+    selected = rng.binomial(size=x.shape, n=1, p=corruption_level, dtype=theano.config.floatX)
+    return x * (1 - selected) + selected * rng.binomial(size=x.shape, n=1, p=0.5, dtype=theano.config.floatX)
 
 class AA(Model):
 
     params = dict(
-        nb_units=Param(initial=10, interval=[10, 300], type='int'),
-        corruption=Param(initial=0, interval=[0, 0.1, 0.2, 0.3], type='choice'),
-        nb_layers=Param(initial=3, interval=[2], type='choice')
+        nb_units=Param(initial=10, interval=[100, 800], type='int'),
+        corruption=Param(initial=0, interval=[0, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5], type='choice'),
+        nb_layers=Param(initial=3, interval=[2, 3, 4], type='choice'),
+        corruption_type=Param(initial='salt_and_pepper', interval=['masking_noise', 'salt_and_pepper'], type='choice')
     )
     params.update(utils.params_batch_optimizer)
 
     def fit(self, X, X_valid=None):
-        m = 10
+        m = 1
 
         # define the model
         w, h = X.shape[1], X.shape[2]
@@ -39,17 +47,23 @@ class AA(Model):
         model = LightweightModel([x_in], [o])
 
         all_layers = get_all_layers(o)
+        self.all_layers = all_layers
         rng = rng_mrg.MRG_RandomStreams()
 
         def get_reconstruction_error(model, X, x_hat=None):
             if x_hat is None:
                 x_hat, = model.get_output(X)
+
             return (-(X * T.log(x_hat) +
                     (1 - X) * T.log(1 - x_hat)).sum(axis=(1, 2)).mean())
 
         def loss_function(model, tensors):
             X = tensors["X"]
             X_noisy = X * (rng.uniform(X.shape) < (1 - self.corruption))
+            if self.corruption_type == "masking_noise":
+                X_noisy = corrupted_masking_noise(rng, X, self.corruption)
+            elif self.corruption_type == "salt_and_pepper":
+                X_noisy = corrupted_salt_and_pepper(rng, X, self.corruption)
             x_hat, = model.get_output(X_noisy)
     #       l1 = 0.01 * sum( T.abs_(layer.W).sum() for layer in all_layers[1:-1])
             l1 = 0
