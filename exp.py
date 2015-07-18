@@ -25,8 +25,8 @@ def launch():
     light.file_snapshot()
     light.set_seed(seed)
 
-    w, h = 64, 64
-    fast_test = False
+    w, h = 28, 28
+    fast_test = False 
     test_ratio = 0.25
     valid_ratio = 0.25
 
@@ -36,7 +36,7 @@ def launch():
     light.set("valid_ratio", valid_ratio)
 
     images = load_images(w=w, h=h)
-    X = images
+    X = images.reshape((-1, w*h))
 
     # prepare
     X = shuffle(X)
@@ -48,8 +48,9 @@ def launch():
         X = X[0:100]
     else:
         default_params = dict()
-        max_evaluations_hp = 50
-    default_params["batch_size"] = 10
+        max_evaluations_hp = 20
+    default_params["batch_size"] = 128
+    default_params["nb_layers"] = 1
     eval_function = lambda model, X_v, _: float(model.get_reconstruction_error(X_v))
     X_train_full, X_test = train_test_split(X, test_size=test_ratio)
     X_train, X_valid = train_test_split(X_train_full, test_size=valid_ratio)
@@ -70,6 +71,7 @@ def launch():
         None,
         max_evaluations=max_evaluations_hp,
         default_params=default_params,
+        not_allowed_params=["batch_size", "nb_layers"],
         eval_function=eval_function
     )
     argmin = min(range(len(all_hp)), key=lambda i:all_scores[i])
@@ -131,7 +133,8 @@ def write_report(folder, e):
         plt.legend()
         plt.savefig("{0}/img/{1}.png".format(folder, name))
         html.append("<img src='img/{0}.png'></img>".format(name))
-
+    
+    """
     for i in range(1, e.get("nb_layers") + 1):
         html.append("<h1>Layer {0}</h1>".format(i))
         means = e.get("best_model_stats").get("activations_{0}_mean".format(i))
@@ -142,9 +145,11 @@ def write_report(folder, e):
         plt.ylabel("activations")
         plt.savefig("{0}/img/layer{1}.png".format(folder, i))
         html.append("<img src='img/layer{0}.png'></img>".format(i))
+    """
     
     html.append("<h1>reconstructions</h1>")
     rec  = np.array(light.get_blob(blob_hash=e.get("reconstructions")))
+    rec = rec.reshape((-1, e.get("w"), e.get("h")))
     for i in range(rec.shape[0]):
         plt.subplot(rec.shape[0], 1, i + 1)
         plt.axis('off')

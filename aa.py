@@ -19,9 +19,9 @@ def corrupted_salt_and_pepper(rng, x, corruption_level):
 class AA(Model):
 
     params = dict(
-        nb_units=Param(initial=10, interval=[100, 800], type='int'),
+        nb_units=Param(initial=100, interval=[100, 800], type='int'),
         corruption=Param(initial=0, interval=[0, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5], type='choice'),
-        nb_layers=Param(initial=3, interval=[2, 3, 4], type='choice'),
+        nb_layers=Param(initial=3, interval=[1, 2, 3, 4], type='choice'),
         corruption_type=Param(initial='salt_and_pepper', interval=['masking_noise', 'salt_and_pepper'], type='choice')
     )
     params.update(utils.params_batch_optimizer)
@@ -30,20 +30,18 @@ class AA(Model):
         m = 1
 
         # define the model
-        w, h = X.shape[1], X.shape[2]
-        x_in = layers.InputLayer((None, w, h))
+        x_in = layers.InputLayer((None, X.shape[1]))
         hid = x_in
 
         for i in range(self.nb_layers):
             hid = layers.DenseLayer(hid, num_units=self.nb_units*m/(2**i),
-                                    nonlinearity=nonlinearities.tanh)
+                                    nonlinearity=nonlinearities.sigmoid)
         for i in range(self.nb_layers - 1):
             k = self.nb_layers - 2 - i
             hid = layers.DenseLayer(hid, num_units=self.nb_units*m/(2**k),
-                                    nonlinearity=nonlinearities.tanh)
-        o = layers.DenseLayer(hid, num_units=w*h,
+                                    nonlinearity=nonlinearities.sigmoid)
+        o = layers.DenseLayer(hid, num_units=X.shape[1],
                             nonlinearity=nonlinearities.sigmoid)
-        o = layers.ReshapeLayer(o, ([0], w, h))
         model = LightweightModel([x_in], [o])
 
         all_layers = get_all_layers(o)
@@ -55,15 +53,16 @@ class AA(Model):
                 x_hat, = model.get_output(X)
 
             return (-(X * T.log(x_hat) +
-                    (1 - X) * T.log(1 - x_hat)).sum(axis=(1, 2)).mean())
+                    (1 - X) * T.log(1 - x_hat)).sum(axis=1).mean())
 
         def loss_function(model, tensors):
             X = tensors["X"]
-            X_noisy = X * (rng.uniform(X.shape) < (1 - self.corruption))
-            if self.corruption_type == "masking_noise":
-                X_noisy = corrupted_masking_noise(rng, X, self.corruption)
-            elif self.corruption_type == "salt_and_pepper":
-                X_noisy = corrupted_salt_and_pepper(rng, X, self.corruption)
+            X_noisy = X
+            #X_noisy = X * (rng.uniform(X.shape) < (1 - self.corruption))
+            #if self.corruption_type == "masking_noise":
+            #    X_noisy = corrupted_masking_noise(rng, X, self.corruption)
+            #elif self.corruption_type == "salt_and_pepper":
+            #    X_noisy = corrupted_salt_and_pepper(rng, X, self.corruption)
             x_hat, = model.get_output(X_noisy)
     #       l1 = 0.01 * sum( T.abs_(layer.W).sum() for layer in all_layers[1:-1])
             l1 = 0
@@ -71,7 +70,7 @@ class AA(Model):
             return get_reconstruction_error(model, X, x_hat) + diversity + l1
 
         input_variables = dict(
-            X=dict(tensor_type=T.tensor3),
+            X=dict(tensor_type=T.matrix),
         )
 
         functions = dict(
@@ -93,10 +92,10 @@ class AA(Model):
 
             def iter_update(self, epoch, nb_batches, iter_update_batch):
                 status = super(MyBatchOptimizer, self).iter_update(epoch, nb_batches, iter_update_batch)
-                status["reconstruction_error_train"] = capsule.get_reconstruction_error(X)
+                status["reconstruction_error_train"] = capsule.get_reconstruction_error(X[0:100])
                 if X_valid is not None:
-                    status["reconstruction_error_valid"] = capsule.get_reconstruction_error(X_valid)
-
+                    status["reconstruction_error_valid"] = capsule.get_reconstruction_error(X_valid[0:100])
+                return status
                 for i, layer in enumerate(all_layers[1:-1]):
                     getter = getattr(capsule, "get_layer_{0}".format(i + 1))
                     activations = getter(X)
@@ -112,7 +111,8 @@ class AA(Model):
             optimization_procedure=(
                    updates.adagrad,
                    {"learning_rate": self.learning_rate}
-            )
+            ),
+            whole_dataset_in_device=True
         )
         capsule = Capsule(
             input_variables, model,

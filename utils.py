@@ -28,8 +28,8 @@ def load_images(w=W, h=H):
 
         X = data.X.reshape((data.X.shape[0], data.img_dim[0], data.img_dim[1]))
         X = shuffle(X)
-        X = X[0:10000]
-
+        if w == 28 and h == 28:
+            return X
         X_b = np.zeros((X.shape[0], w, h), dtype=np.float32)
         for i in range(X_b.shape[0]):
                 X_b[i] = resize(X[i], (w, h))
@@ -40,7 +40,7 @@ def load_images(w=W, h=H):
 
 params_batch_optimizer = dict(
     batch_size = Param(initial=128, interval=[10, 50, 100, 128, 256, 512], type='choice'),
-    learning_rate = Param(initial=10e-4, interval=[-5, -2], type='real', scale='log10'),
+    learning_rate = Param(initial=10e-4, interval=[-5, -1], type='real', scale='log10'),
     momentum = Param(initial=0.5, interval=[0.5, 0.8, 0.9, 0.95, 0.99], type='choice'),
     max_epochs = Param(initial=100, interval=[100, 200], type='choice')
 )
