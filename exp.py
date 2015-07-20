@@ -50,7 +50,7 @@ def launch():
         default_params = dict()
         max_evaluations_hp = 20
     default_params["batch_size"] = 128
-    default_params["nb_layers"] = 1
+    #default_params["nb_layers"] = 1
     eval_function = lambda model, X_v, _: float(model.get_reconstruction_error(X_v))
     X_train_full, X_test = train_test_split(X, test_size=test_ratio)
     X_train, X_valid = train_test_split(X_train_full, test_size=valid_ratio)
@@ -71,7 +71,7 @@ def launch():
         None,
         max_evaluations=max_evaluations_hp,
         default_params=default_params,
-        not_allowed_params=["batch_size", "nb_layers"],
+        not_allowed_params=["batch_size"],
         eval_function=eval_function
     )
     argmin = min(range(len(all_hp)), key=lambda i:all_scores[i])
