@@ -220,6 +220,8 @@ class MyBatchOptimizer(BatchOptimizer):
             status["crosscor_valid"] += self.model.get_cross_correlation(X[test][s_test])
         for a in all_of_them:
             status[a] /= nb_tries_learning_curve
+        for k, v in status.items():
+            light.append(k, float(v))
         return status
 
 
