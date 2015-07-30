@@ -178,35 +178,48 @@ train, test = train_test_split(range(X.shape[0]), test_size=0.25)
 # In[9]:
 
 nb_samples_learning_curve = 1000
-light.set("nb_samples_learning_curve", nb_samples_learning_curve)
+nb_tries_learning_curve = 10
 
+light.set("nb_samples_learning_curve", nb_samples_learning_curve)
+light.set("nb_tries_learning_curve", nb_tries_learning_curve)
 
 class MyBatchOptimizer(BatchOptimizer):
     
     def iter_update(self, epoch, nb_batches, iter_update_batch):
         status = super(MyBatchOptimizer, self).iter_update(epoch, nb_batches, iter_update_batch)
         
-        s = np.arange(len(train))
-        np.random.shuffle(s)
-        s_train = s[0:nb_samples_learning_curve]
+        all_of_them = [
+            "acc_train",
+            "acc_valid",
+            "rec_train",
+            "rec_valid",
+            "crosscor_train",
+            "crosscor_valid"
+        ]
+        for a in all_of_them:
+            status[a] = 0.
+        for i in range(nb_tries_learning_curve):
+        
+            s = np.arange(len(train))
+            np.random.shuffle(s)
+            s_train = s[0:nb_samples_learning_curve]
 
-        
-        s = np.arange(len(test))
-        np.random.shuffle(s)
-        s_test = s[0:nb_samples_learning_curve]
 
-        
-        status["acc_train"] = (self.model.predict(X[train][s_train])==y[train][s_train].argmax(axis=1)).mean()
-        status["acc_valid"] = (self.model.predict(X[test][s_test])==y[test][s_test].argmax(axis=1)).mean()
-        
-        status["rec_train"] = self.model.get_reconstruction_error(X[train][s_train])
-        status["rec_valid"] = self.model.get_reconstruction_error(X[test][s_test])
-        
-        status["crosscor_train"] = self.model.get_cross_correlation(X[train][s_train])
-        status["crosscor_valid"] = self.model.get_cross_correlation(X[test][s_test])
-        
-        for k, v in status.items():
-			light.append(k, float(v))
+            s = np.arange(len(test))
+            np.random.shuffle(s)
+            s_test = s[0:nb_samples_learning_curve]
+
+
+            status["acc_train"] += (self.model.predict(X[train][s_train])==y[train][s_train].argmax(axis=1)).mean()
+            status["acc_valid"] += (self.model.predict(X[test][s_test])==y[test][s_test].argmax(axis=1)).mean()
+
+            status["rec_train"] += self.model.get_reconstruction_error(X[train][s_train])
+            status["rec_valid"] += self.model.get_reconstruction_error(X[test][s_test])
+
+            status["crosscor_train"] += self.model.get_cross_correlation(X[train][s_train])
+            status["crosscor_valid"] += self.model.get_cross_correlation(X[test][s_test])
+        for a in all_of_them:
+            status[a] /= nb_tries_learning_curve
         return status
 
 
