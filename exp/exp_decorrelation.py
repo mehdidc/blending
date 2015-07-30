@@ -270,7 +270,7 @@ light.set(model_type, model_type)
 # ### Fully connected
 
 # In[12]:
-latent_size = 10
+latent_size = 5
 if model_type == "fully_connected":
     ## fully connected
     num_hidden_units = 2000
@@ -557,48 +557,6 @@ elif model_type == "fully_connected":
 # In[40]:
 
 from lasagne.easy import get_stat
-
-"""
-layer = 0
-train_stat = get_stat("rec_train", capsule.batch_optimizer.stats)
-test_stat = get_stat("rec_valid", capsule.batch_optimizer.stats)
-plt.yticks(np.arange(round(max(train_stat), 2), round(min(train_stat), 2), -1.5))
-plt.plot(train_stat, label="train")
-plt.plot(test_stat, label="valid")
-plt.xlabel("epoch")
-plt.ylabel("reconstruction error")
-plt.legend()
-plt.title("reconstruction")
-plt.savefig("rec.png")
-plt.show()
-
-epoch = get_stat("epoch", capsule.batch_optimizer.stats)
-acc_train = get_stat("acc_train", capsule.batch_optimizer.stats)
-acc_valid = get_stat("acc_valid", capsule.batch_optimizer.stats)
-plt.title("accuracy")
-plt.yticks(np.arange(round(min(acc_train), 2), round(max(acc_train), 2), 0.02))
-plt.plot(acc_train, label="train")
-plt.plot(acc_valid, label="valid")
-plt.xlabel("epoch")
-plt.ylabel("accuracy")
-plt.legend(loc='best')
-plt.savefig("acc.png")
-plt.show()
-
-epoch = get_stat("epoch", capsule.batch_optimizer.stats)
-acc_train = get_stat("crosscor_train", capsule.batch_optimizer.stats)
-acc_valid = get_stat("crosscor_valid", capsule.batch_optimizer.stats)
-plt.title("crosscor")
-plt.yticks(np.arange(round(max(acc_train), 3), round(min(acc_train), 3), -0.005))
-plt.plot(acc_train, label="train")
-plt.plot(acc_valid, label="valid")
-plt.xlabel("epoch")
-plt.ylabel("crosscor")
-plt.legend(loc='best')
-plt.savefig("crosscor.png")
-plt.show()
-
-
 # ## Interactive sliders
 
 # In[50]:
@@ -703,65 +661,9 @@ if use_examples is True:
     display(button)
     button.on_click(on_button_clicked)
 
-
-# ## Visualizaion of reconstruction of images
-
-# In[51]:
-
-"""
-nb = 100
-x_ = X[test]
-x_ = X[0:nb]
-x_hat_ = capsule.reconstruct(x_)
-light.set("test_reconstructions", light.insert_blob(x_hat_.tolist()))
-"""
-
-# In[52]:
-
-"""
-
-# ## 2d histogram of hidden factors
-NB = 10000
-light.set("nb_examples_for_statitistics", NB)
-E = np.arange(X.shape[0])
-np.random.shuffle(E)
-E = E[0:NB]
-
-# In[43]:
-
-# SOurce :http://oceanpython.org/2013/02/25/2d-histogram/
-
-x_ = X[E]
-z = capsule.encode(x_)
-#light.set("hidden_factors_distribution", z.tolist())
-# Estimate the 2D histogram
-nbins = 200
-H, xedges, yedges = np.histogram2d(z[:, 0],z[:, 1],bins=nbins)
- 
-# H needs to be rotated and flipped
-H = np.rot90(H)
-H = np.flipud(H)
- 
-# Mask zeros
-Hmasked = np.ma.masked_where(H==0,H) # Mask pixels with a value of zero
- 
-# Plot 2D histogram using pcolor
-fig2 = plt.figure()
-plt.pcolormesh(xedges,yedges,Hmasked, cmap="afmhot")
-plt.xlabel('x')
-plt.ylabel('y')
-cbar = plt.colorbar()
-cbar.ax.set_ylabel('Counts')
-"""
-
-
-# ## Checking the gaussianity of the hidden factors
-
-# In[53]:
-
 from scipy.stats import kurtosistest
 _, pvalues = kurtosistest(z)
-light.set("hidden_factors_kurtosis_pvalues",  pvalues)
+light.set("hidfactkurtosispvalues",  pvalues)
 
 
 # ## Covariance matrix of hidden factors
@@ -769,8 +671,8 @@ light.set("hidden_factors_kurtosis_pvalues",  pvalues)
 # In[91]:
 
 #plt.matshow(np.cov(z.T), cmap="gray")
-light.set("hidden_factors_covariance_matrix", np.cov(z.T).tolist())
-light.set("hidden_factors_correlation_matrix", np.corrcoef(z.T).tolist())
+light.set("hidfactcov", np.cov(z.T).tolist())
+light.set("hidfactcorr", np.corrcoef(z.T).tolist())
 #corr=(np.corrcoef(z.T))
 
 
@@ -795,15 +697,11 @@ light.set("hidden_factors_correlation_matrix", np.corrcoef(z.T).tolist())
 # ## Visualization of samples when varying hidden factors
 
 # In[47]:
-
+"""
 C = np.cov(z.T)
 eig = np.linalg.eigvals(np.dot(C, C.T))
 latent_order = np.argsort(eig)[::-1]
 
-
-"""
-
-"""
 from lasagne.misc.plot_weights import grid_plot
 labels = np.arange(output_dim)# labels to consider (by default, all)
 std_units=2# nb of std units of values of latent dim around the mean to consider
@@ -839,7 +737,6 @@ for latent_dim in latent_order:
     plt.show()
     k += 1
 """
-
 light.endings() # save the duration
 light.store_experiment() # update the DB
 light.close() # close
