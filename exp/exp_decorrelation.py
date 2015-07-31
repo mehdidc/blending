@@ -79,10 +79,10 @@ def resize_all(X, w, h):
     X_b = np.empty((X.shape[0], w, h), dtype=X.dtype)
     for i in range(X.shape[0]):
         X_b[i] = resize(X[i], (w, h))
-    return X_b  
+    return X_b
 
 class SumLayer(Layer):
-    def __init__(self, 
+    def __init__(self,
                  incoming,
                  axis=1,
                  **kwargs):
@@ -91,7 +91,7 @@ class SumLayer(Layer):
 
     def get_output_for(self, input, **kwargs):
         return input.sum(axis=self.axis)
-    
+
     def get_output_shape_for(self, input):
         shape = list(self.input_shape)
         del shape[self.axis]
@@ -105,24 +105,26 @@ class SumLayer(Layer):
 # In[2]:
 
 
-dataset = "mnist"
+dataset = "font"
 light.set("dataset", dataset)
 
 
 if dataset == "font":
-	data = Fonts(kind="all_64", labels_kind="letters")
-	data.load()
-	X = data.X
-	X = X.astype(np.float32)
-	y = data.y.astype(np.int32)
-	nb_outputs = 26
+    data = Fonts(kind="all_64", labels_kind="letters")
+    data.load()
+    X = data.X
+    X = X.astype(np.float32)
+    y = data.y.astype(np.int32)
+    nb_outputs = 26
+    w_orig, h_orig = 64, 64
 elif dataset == "mnist":
-	data = MNIST()
-	data.load()
-	X = data.X
-	X = X.astype(np.float32)
-	y = data.y.astype(np.int32)
-	nb_outputs = 10
+    data = MNIST()
+    data.load()
+    X = data.X
+    X = X.astype(np.float32)
+    y = data.y.astype(np.int32)
+    nb_outputs = 10
+    w_orig, h_orig = 28, 28
 
 
 
@@ -135,19 +137,19 @@ light.set("h", h)
 
 # In[4]:
 
-rescale = False
+rescale = True
 
 if rescale:
-	from skimage.filter import threshold_otsu
-	from skimage.transform import resize
-	X_b = np.zeros((X.shape[0], w, h))
-	for i in range(X_b.shape[0]):
-		X_b[i] = resize(X[i].reshape((64, 64)), (w, h))
-	X = X_b
-	#X = X <= threshold_otsu(X)
-	X = X.astype(np.float32)
-	X = X.reshape((X.shape[0], w*h))
-	X=1-X
+    from skimage.filter import threshold_otsu
+    from skimage.transform import resize
+    X_b = np.zeros((X.shape[0], w, h))
+    for i in range(X_b.shape[0]):
+        X_b[i] = resize(X[i].reshape((w_orig, h_orig)), (w, h))
+    X = X_b
+    #X = X <= threshold_otsu(X)
+    X = X.astype(np.float32)
+    X = X.reshape((X.shape[0], w*h))
+    X=1-X
 
 light.set("rescaled", rescale)
 
@@ -184,10 +186,10 @@ light.set("nb_samples_learning_curve", nb_samples_learning_curve)
 light.set("nb_tries_learning_curve", nb_tries_learning_curve)
 
 class MyBatchOptimizer(BatchOptimizer):
-    
+
     def iter_update(self, epoch, nb_batches, iter_update_batch):
         status = super(MyBatchOptimizer, self).iter_update(epoch, nb_batches, iter_update_batch)
-        
+
         all_of_them = [
             "acc_train",
             "acc_valid",
@@ -199,7 +201,7 @@ class MyBatchOptimizer(BatchOptimizer):
         for a in all_of_them:
             status[a] = 0.
         for i in range(nb_tries_learning_curve):
-        
+
             s = np.arange(len(train))
             np.random.shuffle(s)
             s_train = s[0:nb_samples_learning_curve]
@@ -239,7 +241,7 @@ def mse(truth, pred):
 
 def loss_function_y(y_true, y_pred):
     return (T.nnet.categorical_crossentropy(y_pred, y_true)).mean()
-        
+
 def corrupted_masking_noise(rng, x, corruption_level):
     return rng.binomial(size=x.shape, n=1, p=1 - corruption_level) * x
 
@@ -248,15 +250,15 @@ def corrupted_salt_and_pepper(rng, x, corruption_level):
     return x * (1 - selected) + selected * rng.binomial(size=x.shape, n=1, p=0.5, dtype=theano.config.floatX)
 
 rng = rng_mrg.MRG_RandomStreams(seed)
- 
+
 def corruption_function(X):
     return corrupted_salt_and_pepper(rng, X, 0.5)
-    
+
 
 class Model:
     def get_all_params(self, **t):
-        return list(set(self.x_to_z.get_all_params(**t) + 
-                        self.x_to_y.get_all_params(**t) + 
+        return list(set(self.x_to_z.get_all_params(**t) +
+                        self.x_to_y.get_all_params(**t) +
                         self.z_to_x.get_all_params(**t)))
 
 
@@ -264,13 +266,13 @@ class Model:
 
 # In[11]:
 
-model_type = "convnet" # or "convnet"
+model_type = "fully_connected" # or "convnet"
 light.set(model_type, model_type)
 
 # ### Fully connected
 
 # In[12]:
-latent_size = 10
+latent_size = 5
 if model_type == "fully_connected":
     ## fully connected
     num_hidden_units = 2000
@@ -291,7 +293,7 @@ if model_type == "fully_connected":
     l_observed = layers.DenseLayer(l_encoder4, num_units=output_dim,
                                       nonlinearity=T.nnet.softmax)
 
-    l_latent = layers.DenseLayer(l_encoder4, 
+    l_latent = layers.DenseLayer(l_encoder4,
                                  num_units=latent_size,
                                  nonlinearity=None) # linear
 
@@ -324,7 +326,7 @@ if model_type == "convnet":
     nb_filters=32
     size_filters=5
     nb_hidden=1000
-    
+
     light.set("latent_size", latent_size)
     light.set("nb_filters", nb_filters)
     light.set("size_filters", size_filters)
@@ -353,7 +355,7 @@ if model_type == "convnet":
         num_units=nb_hidden,
         nonlinearity=nonlinearities.rectify,
     )
-    
+
     l_hid = layers.DenseLayer(
         l_hid,
         num_units=nb_hidden,
@@ -362,11 +364,11 @@ if model_type == "convnet":
 
     #code layer
 
-    l_observed = layers.DenseLayer(l_hid, 
+    l_observed = layers.DenseLayer(l_hid,
                                    num_units=output_dim,
                                     nonlinearity=T.nnet.softmax)
 
-    l_latent = layers.DenseLayer(l_hid, 
+    l_latent = layers.DenseLayer(l_hid,
                                  num_units=latent_size,
                                  nonlinearity=None) # linear
 
@@ -377,7 +379,7 @@ if model_type == "convnet":
         num_units=nb_hidden,
         nonlinearity=nonlinearities.rectify,
     )
-    
+
     l_hid = layers.DenseLayer(
         l_hid,
         num_units=nb_hidden,
@@ -385,7 +387,7 @@ if model_type == "convnet":
     )
 
 
-    
+
     # unflatten layer
     hid = layers.DenseLayer(l_hid,
                             num_units=nb_filters_decoder * (w - size_filters_decoder + 1) * (h - size_filters_decoder + 1))
@@ -423,7 +425,7 @@ def cross_correlation(a, b):
 input_variables = OrderedDict()
 input_variables["X"] = dict(tensor_type=T.matrix)
 input_variables["y"] = dict(tensor_type=T.matrix)
-    
+
 
 functions = dict(
     encode=dict(
@@ -459,7 +461,7 @@ batch_optimizer = MyBatchOptimizer(
     verbose=1,
     max_nb_epochs=100,
     batch_size=100,
-    optimization_procedure=(updates.rmsprop, 
+    optimization_procedure=(updates.rmsprop,
                             {"learning_rate": learning_rate})
 )
 light.set("learning_rate", learning_rate)
@@ -475,28 +477,28 @@ loss_crosscor_coef = 10
 def loss_function(model, tensors):
     x_to_z, x_to_y, z_to_x = model.x_to_z, model.x_to_y, model.z_to_x
     X_batch, y_batch = tensors["X"], tensors["y"]
-    
+
     z, = x_to_z.get_output(X_batch)
 
-    
+
     y_hat, = x_to_y.get_output(X_batch)
     X_hat, = z_to_x.get_output(y_hat, z)
-    
+
     loss_rec = ((X_hat - X_batch) ** 2).sum(axis=1).mean()
     loss_supervised = ((y_hat - y_batch)**2).sum(axis=1).mean()
-    
+
     return  loss_rec_coef * loss_rec + loss_supervised_coef*loss_supervised + loss_crosscor_coef * cross_correlation(z, y_hat)
-    
+
 capsule = Capsule(
-    input_variables, 
+    input_variables,
     model,
     loss_function,
     functions=functions,
     batch_optimizer=batch_optimizer,
 )
 Z_batch = T.matrix("z_batch")
-capsule.decode = theano.function([Z_batch, capsule.v_tensors["y"]], 
-                                  l_decoder_out.get_output({l_latent: Z_batch, 
+capsule.decode = theano.function([Z_batch, capsule.v_tensors["y"]],
+                                  l_decoder_out.get_output({l_latent: Z_batch,
                                                             l_observed: capsule.v_tensors["y"]}))
 
 
@@ -511,7 +513,7 @@ capsule.decode = theano.function([Z_batch, capsule.v_tensors["y"]],
 #SVG("model.svg")
 
 
-# ## Training 
+# ## Training
 
 # In[37]:
 
