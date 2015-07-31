@@ -520,112 +520,25 @@ try:
 except KeyboardInterrupt:
     print("interruption...")
 
-
-
-
-# In[38]:
-
-
-
-# ## Visualization of features
-
-# In[39]:
-
 from lasagne.misc.plot_weights import grid_plot
 
 if model_type == "convnet":
     layers_enc = get_all_layers(model.x_to_z.output_layers[0])
     layers_dec = get_all_layers(model.z_to_x.output_layers[0])
     for l in layers_enc[2], layers_dec[-4]:
-        #plt.clf()
         W = l.W.get_value()[:, 0]
         light.append("features", light.insert_blob(W.tolist()))
-        #grid_plot(W, imshow_options={"cmap": "gray"})
-        #plt.show()
 elif model_type == "fully_connected":
     layers = get_all_layers(l_decoder_out)
     for W in (layers[1].W.get_value().T, layers[-1].W.get_value()):
-        #plt.clf()
         W = W.reshape((W.shape[0], w, h))
         light.append("features", light.insert_blob(W.tolist()))
-        #grid_plot(W, imshow_options={"cmap": "gray"}, nbrows=10, nbcols=10)
-        #plt.show()
-
-
-# ## Statistics
-
-# In[40]:
-
 from lasagne.easy import get_stat
-# ## Interactive sliders
-
-#plt.matshow(np.cov(z.T), cmap="gray")
+nb_samples_cov = 20000
+z = capsule.encode(X[0:nb_samples_cov])
 light.set("hidfactcov", np.cov(z.T).tolist())
 light.set("hidfactcorr", np.corrcoef(z.T).tolist())
-#corr=(np.corrcoef(z.T))
-
-
-#print(np.abs((corr)))
-#print(np.abs(corr-np.diag(np.diag(corr))).max())
-
-
-# In[92]:
-
-#plt.hist(corr[(1-np.eye(corr.shape[0])).astype(np.bool)], normed=True)
-
-
-# In[68]:
-
-#c=(np.cov(z.T))
-
-#a= (np.diag(c).mean())
-#b=( np.abs(c - np.diag(np.diag(c))).sum() /   (c.shape[0]*c.shape[1]-c.shape[0])  )
-#print(a/b)
-
-
-# ## Visualization of samples when varying hidden factors
-
 # In[47]:
-"""
-C = np.cov(z.T)
-eig = np.linalg.eigvals(np.dot(C, C.T))
-latent_order = np.argsort(eig)[::-1]
-
-from lasagne.misc.plot_weights import grid_plot
-labels = np.arange(output_dim)# labels to consider (by default, all)
-std_units=2# nb of std units of values of latent dim around the mean to consider
-labels = np.arange(output_dim)
-L = latent_size
-
-x_ = X[train][0:100]
-z_ = capsule.encode(x_)
-latent_std = np.std(z_, axis=0)
-latent_mean = np.mean(z_, axis=0)
-
-k = 1
-for latent_dim in latent_order:
-    print("hidden factor : {0}".format(latent_dim))
-    ys = np.eye(output_dim)[labels].repeat(nb, axis=0)
-    seq = np.linspace(latent_mean[latent_dim] - latent_std[latent_dim]*std_units,
-                      latent_mean[latent_dim] + latent_std[latent_dim]*std_units,
-                      nb)
-    z = np.zeros((nb, L))
-    z[:, latent_dim] = seq
-    z = z.repeat(len(labels), axis=0)
-    z = z.reshape((nb, len(labels), L))
-    z = z.transpose((1, 0, 2))
-    z = z.reshape((nb*len(labels), L))
-    z = z.astype(np.float32)
-    ys = ys.astype(np.float32)
-
-    c = capsule.decode(z, ys)
-    c = c.reshape((c.shape[0], w, h))
-    plt.clf()
-    grid_plot(c, imshow_options=dict(cmap="gray"), nbrows=len(labels), nbcols=nb)
-    plt.savefig("hidfactor{0}.png".format(k))
-    plt.show()
-    k += 1
-"""
 light.endings() # save the duration
 light.store_experiment() # update the DB
 light.close() # close
