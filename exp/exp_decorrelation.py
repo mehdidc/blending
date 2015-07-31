@@ -270,7 +270,7 @@ light.set(model_type, model_type)
 # ### Fully connected
 
 # In[12]:
-latent_size = 5
+latent_size = 10
 if model_type == "fully_connected":
     ## fully connected
     num_hidden_units = 2000
@@ -558,117 +558,6 @@ elif model_type == "fully_connected":
 
 from lasagne.easy import get_stat
 # ## Interactive sliders
-
-# In[50]:
-
-
-use_examples = True # init/work with examples for dataset or not
-nb = 100 # nb of examples to consider
-max_nb_sliders = 10
-T_ = train
-x = X[T_][0:nb]
-
-
-nb_outputs = y.shape[1]
-
-
-from IPython.html.widgets import (interact, interactive, 
-                                  IntSliderWidget, IntSlider, FloatSliderWidget,
-                                  ButtonWidget
-                                  )
-from IPython.display import display # Used to display widgets in the notebook
-
-from IPython.html.widgets import *
-from IPython.html import widgets
-
-z = capsule.encode(x)
-
-if z.shape[1] > max_nb_sliders:
-    params = np.random.choice(z.shape[1],
-                              size=10)
-else:
-    params = np.arange(z.shape[1])
-
-boundaries = OrderedDict()
-z_mean = z.mean(axis=0)
-z_std = z.std(axis=0)
-for p in (params):
-    boundaries["{0}".format(p)] = FloatSliderWidget(min=z_mean[p]-2*z_std[p],
-                                                    max=z_mean[p]+2*z_std[p],
-                                                    step=0.001,
-                                                    value=0.)
-d = 0
-l = y[T_][d].argmax() 
-
-def draw(**all_params):
-    if use_examples is True:
-        example = all_params["example"]
-        del all_params["example"]
-    label = all_params["label"]
-    del all_params["label"]
-    params = all_params
-    
-    if use_examples is True:
-        z = capsule.encode(x[example:example + 1])
-    else:
-        z = np.zeros((1, latent_size), dtype="float32")
-        z[0, :] = 0
-    
-    y_ = np.zeros(nb_outputs, dtype='float32')
-    y_[label] = 1.
-    y_ = y_[np.newaxis, :]
-        
-    for k, v in params.items():
-        z[0][int(k)] = v
-    plt.imshow(capsule.decode(z, y_)[0].reshape((w, h)), cmap="gray")
-    
-
-p = dict()
-p.update(boundaries)
-
-label_selector = IntSliderWidget(min=0,max=output_dim-1,step=1,value=l)
-p["label"] = label_selector
-
-if use_examples is True:
-    example_selector = IntSliderWidget(min=0,max=nb-1,step=1,value=d)
-    p["example"] = example_selector
-
-i = interact(**p)
-
-
-
-def on_button_clicked(b):
-    
-    example = example_selector.get_state()["value"]
-    z = capsule.encode(x[example:example + 1])
-    for p in params:
-        w = boundaries["{0}".format(p)]
-        state = w.get_state()
-        state["value"] = z[0, int(p)]
-        w.set_state(state)
-        w.send_state(state)
-        
-    state = label_selector.get_state()
-    state["value"] = y[example].argmax()
-    label_selector.set_state(state)
-    label_selector.send_state(state)
-    
-    
-draw_i = i(draw)
-
-if use_examples is True:
-    button = widgets.ButtonWidget(description="fit!")
-    display(button)
-    button.on_click(on_button_clicked)
-
-from scipy.stats import kurtosistest
-_, pvalues = kurtosistest(z)
-light.set("hidfactkurtosispvalues",  pvalues)
-
-
-# ## Covariance matrix of hidden factors
-
-# In[91]:
 
 #plt.matshow(np.cov(z.T), cmap="gray")
 light.set("hidfactcov", np.cov(z.T).tolist())
