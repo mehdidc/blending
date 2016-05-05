@@ -266,13 +266,13 @@ class Model:
 
 # In[11]:
 
-model_type = "fully_connected" # or "convnet"
+model_type = "convnet" # or "convnet"
 light.set(model_type, model_type)
 
 # ### Fully connected
 
 # In[12]:
-latent_size = 5
+latent_size = 100
 if model_type == "fully_connected":
     ## fully connected
     num_hidden_units = 2000
